@@ -3,24 +3,25 @@ from tkinter import filedialog, messagebox
 from converter import convert_csv_to_sqlite
 import os
 import globals
+from theme_manager import ThemableWindow, get_app_theme_manager
 
-class SetupPathsWindow:
-    """Window for setting up file paths and configurations"""
+class SetupPathsWindow(ThemableWindow):
+    """Window for setting up file paths and configurations with theme support"""
     
     def __init__(self, parent):
+        # Initialize theming first
+        ThemableWindow.__init__(self, get_app_theme_manager())
+        
         self.parent = parent
         
-        # Initialize theme
-        self.current_theme = {
-            'bg': 'white',
-            'text': 'black'
-        }
+        # Get current theme
+        self.current_theme = self.theme_manager.get_current_theme()
         
         # Create window
         self.window = tk.Toplevel(parent)
         self.window.title("Conversion of the CSV file to SQL database")
-        self.window.geometry("1300x700")
-        self.window.configure(bg='white')
+        self.window.geometry("1300x750")
+        self.window.configure(bg=self.current_theme['bg'])
         self.window.resizable(width=False, height=False)
         
         self.window.transient(parent)
@@ -35,26 +36,50 @@ class SetupPathsWindow:
         
         try:
             self.setup_ui()
+            # Apply initial theme
+            self.apply_theme()
         except Exception as e:
             messagebox.showerror("UI Setup Error", f"Failed to create interface: {str(e)}")
             self.window.destroy()
     
+    def on_theme_changed(self, new_theme):
+        """Called when theme changes"""
+        self.current_theme = new_theme
+        self.window.configure(bg=self.current_theme['bg'])
+        self.apply_theme()
+        
+        # Update convert button state colors
+        self.check_conversion_ready()
+    
     def setup_ui(self):
         """Setup the user interface"""
+        # Theme toggle at top
+        self.create_theme_toggle_section()
+        
         # Title
-        title_label = tk.Label(
+        self.title_label = tk.Label(
             self.window, 
             text="Configure Data File, save location and database name",
             font=("Arial", 16, "bold"), 
-            bg='white', 
-            fg='black'
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['title_color']
         )
-        title_label.pack(pady=20)
+        self.title_label.pack(pady=20)
+        self.register_special_widget(self.title_label, 'title')
         
         self.create_CSV_section()
         self.create_dbname_section()
         self.create_save_path_section()
         self.create_control_buttons()
+
+    def create_theme_toggle_section(self):
+        """Create theme toggle button"""
+        theme_frame = tk.Frame(self.window, bg=self.current_theme['bg'])
+        theme_frame.pack(anchor='ne', padx=10, pady=5)
+        
+        self.theme_button = self.create_theme_toggle(theme_frame)
+        self.theme_button.pack()
+        self.register_special_widget(self.theme_button, 'theme_toggle')
 
     def create_CSV_section(self):
         '''Create CSV file selection section'''
@@ -70,46 +95,55 @@ class SetupPathsWindow:
         )
         file_section_label.pack(anchor='w', pady=(0, 10))
         
-        file_button = tk.Button(
+        self.file_button = tk.Button(
             csv_frame, 
             text="Browse for Data File",
             command=self.select_file,
             font=("Arial", 12), 
             width=20, 
             height=2, 
-            bg='lightblue',
+            bg=self.current_theme['button_bg'],
+            fg=self.current_theme['button_fg'],
             cursor='hand2'
         )
-        file_button.pack(pady=5)
+        self.file_button.pack(pady=5)
         
         self.file_status_label = tk.Label(
             csv_frame, 
             text="No file selected",
             font=("Arial", 10), 
-            bg='white', 
-            fg='red'
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['status_error']
         )
         self.file_status_label.pack(pady=5)
+        self.register_special_widget(self.file_status_label, 'status_error')
     
     def create_dbname_section(self):
         """Create database name and table name input section"""
-        dbname_frame = tk.Frame(self.window, bg='white')
+        dbname_frame = tk.Frame(self.window, bg=self.current_theme['bg'])
         dbname_frame.pack(pady=20, padx=20, fill='x')
         
         # Database name section
-        db_section = tk.Frame(dbname_frame, bg='white')
+        db_section = tk.Frame(dbname_frame, bg=self.current_theme['bg'])
         db_section.pack(fill='x', pady=(0, 10))
         
         dbname_label = tk.Label(
             db_section, 
             text="2. Database name:",
             font=("Arial", 12, "bold"), 
-            bg='white', 
-            fg='black'
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['text']
         )
         dbname_label.pack(side='left', padx=(0, 10))
         
-        self.dbname_entry = tk.Entry(db_section, font=("Arial", 12), width=30)
+        self.dbname_entry = tk.Entry(
+            db_section, 
+            font=("Arial", 12), 
+            width=30,
+            bg=self.current_theme['entry_bg'],
+            fg=self.current_theme['entry_fg'],
+            insertbackground=self.current_theme['text']
+        )
         self.dbname_entry.pack(side='left', padx=(0, 10))
         self.dbname_entry.bind("<KeyRelease>", self.validate_db_name)
         self.dbname_entry.bind("<Return>", self.set_db_name)
@@ -119,25 +153,33 @@ class SetupPathsWindow:
             db_section,
             text="Enter database name",
             font=("Arial", 10),
-            bg='white',
-            fg='orange'
+            bg=self.current_theme['bg'],
+            fg=self.current_theme['status_warning']
         )
         self.db_status_label.pack(side='left', padx=(10, 0))
+        self.register_special_widget(self.db_status_label, 'status_warning')
         
         # Table name section
-        table_section = tk.Frame(dbname_frame, bg='white')
+        table_section = tk.Frame(dbname_frame, bg=self.current_theme['bg'])
         table_section.pack(fill='x')
         
         tablename_label = tk.Label(
             table_section,
             text='3. Table name:',
             font=("Arial", 12, "bold"),
-            bg='white',
-            fg='black'
+            bg=self.current_theme['bg'],
+            fg=self.current_theme['text']
         )
         tablename_label.pack(side='left', padx=(0, 10))
         
-        self.tablename_entry = tk.Entry(table_section, font=("Arial", 12), width=30)
+        self.tablename_entry = tk.Entry(
+            table_section, 
+            font=("Arial", 12), 
+            width=30,
+            bg=self.current_theme['entry_bg'],
+            fg=self.current_theme['entry_fg'],
+            insertbackground=self.current_theme['text']
+        )
         self.tablename_entry.pack(side='left', padx=(0, 10))
         self.tablename_entry.bind("<KeyRelease>", self.validate_table_name)
         self.tablename_entry.bind("<Return>", self.set_table_name)
@@ -147,38 +189,67 @@ class SetupPathsWindow:
             table_section,
             text="Enter table name",
             font=("Arial", 10),
-            bg='white',
-            fg='orange'
+            bg=self.current_theme['bg'],
+            fg=self.current_theme['status_warning']
         )
         self.table_status_label.pack(side='left', padx=(10, 0))
+        self.register_special_widget(self.table_status_label, 'status_warning')
     
     def validate_db_name(self, event=None):
         """Validate database name input"""
         db_name = self.dbname_entry.get().strip()
         if not db_name:
-            self.db_status_label.config(text="Database name required", fg='red')
+            self.db_status_label.config(
+                text="Database name required", 
+                fg=self.current_theme['status_error']
+            )
+            self.register_special_widget(self.db_status_label, 'status_error')
             self.db_name_set = False
         elif not self.is_valid_filename(db_name):
-            self.db_status_label.config(text="Invalid characters in name", fg='red')
+            self.db_status_label.config(
+                text="Invalid characters in name", 
+                fg=self.current_theme['status_error']
+            )
+            self.register_special_widget(self.db_status_label, 'status_error')
             self.db_name_set = False
         else:
-            self.db_status_label.config(text="✓ Valid database name", fg='green')
+            self.db_status_label.config(
+                text="✓ Valid database name", 
+                fg=self.current_theme['status_good']
+            )
+            self.register_special_widget(self.db_status_label, 'status_good')
             self.db_name_set = True
             globals.DB_NAME = db_name
+        
+        self.check_conversion_ready()
     
     def validate_table_name(self, event=None):
         """Validate table name input"""
         table_name = self.tablename_entry.get().strip()
         if not table_name:
-            self.table_status_label.config(text="Table name required", fg='red')
+            self.table_status_label.config(
+                text="Table name required", 
+                fg=self.current_theme['status_error']
+            )
+            self.register_special_widget(self.table_status_label, 'status_error')
             self.table_name_set = False
         elif not self.is_valid_sql_name(table_name):
-            self.table_status_label.config(text="Invalid SQL table name", fg='red')
+            self.table_status_label.config(
+                text="Invalid SQL table name", 
+                fg=self.current_theme['status_error']
+            )
+            self.register_special_widget(self.table_status_label, 'status_error')
             self.table_name_set = False
         else:
-            self.table_status_label.config(text="✓ Valid table name", fg='green')
+            self.table_status_label.config(
+                text="✓ Valid table name", 
+                fg=self.current_theme['status_good']
+            )
+            self.register_special_widget(self.table_status_label, 'status_good')
             self.table_name_set = True
             globals.TABLE_NAME = table_name
+        
+        self.check_conversion_ready()
     
     def is_valid_filename(self, filename):
         """Check if filename is valid for the operating system"""
@@ -209,38 +280,40 @@ class SetupPathsWindow:
     
     def create_save_path_section(self):
         """Create save path selection section"""
-        path_frame = tk.Frame(self.window, bg='white')
+        path_frame = tk.Frame(self.window, bg=self.current_theme['bg'])
         path_frame.pack(pady=20, padx=20, fill='x')
         
         path_section_label = tk.Label(
             path_frame, 
             text="4. Select Save Location",
             font=("Arial", 12, "bold"), 
-            bg='white', 
-            fg='black'
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['text']
         )
         path_section_label.pack(anchor='w', pady=(0, 10))
         
-        path_button = tk.Button(
+        self.path_button = tk.Button(
             path_frame, 
             text="Browse for Save Location",
             command=self.select_save_path,
             font=("Arial", 12), 
             width=20, 
             height=2, 
-            bg='lightblue',
+            bg=self.current_theme['button_bg'],
+            fg=self.current_theme['button_fg'],
             cursor='hand2'
         )
-        path_button.pack(pady=5)
+        self.path_button.pack(pady=5)
         
         self.path_status_label = tk.Label(
             path_frame, 
             text="No save path selected",
             font=("Arial", 10), 
-            bg='white', 
-            fg='red'
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['status_error']
         )
         self.path_status_label.pack(pady=5)
+        self.register_special_widget(self.path_status_label, 'status_error')
 
     def create_control_buttons(self):
         """Create control buttons"""
@@ -255,37 +328,42 @@ class SetupPathsWindow:
             font=("Arial", 12, "bold"), 
             width=20, 
             height=2, 
-            bg='lightgreen',
+            bg=self.current_theme['convert_bg'],
+            fg=self.current_theme['convert_fg'],
             cursor='hand2',
             state='disabled'  # Initially disabled
         )
         self.convert_button.pack(side='left', padx=10)
+        self.register_special_widget(self.convert_button, 'convert')
         
         # Done button (close window)
-        done_button = tk.Button(
+        self.done_button = tk.Button(
             button_frame, 
             text="Close",
             command=self.close_setup,
             font=("Arial", 12), 
             width=15, 
             height=2, 
-            bg='lightgray',
+            bg=self.current_theme['button_bg'],
+            fg=self.current_theme['button_fg'],
             cursor='hand2'
         )
-        done_button.pack(side='left', padx=10)
+        self.done_button.pack(side='left', padx=10)
         
         # Cancel button
-        cancel_button = tk.Button(
+        self.cancel_button = tk.Button(
             button_frame, 
             text="Cancel",
             command=self.cancel_operation,
             font=("Arial", 12), 
             width=15, 
             height=2, 
-            bg='lightcoral',
+            bg=self.current_theme['exit_bg'],
+            fg=self.current_theme['exit_fg'],
             cursor='hand2'
         )
-        cancel_button.pack(side='left', padx=10)
+        self.cancel_button.pack(side='left', padx=10)
+        self.register_special_widget(self.cancel_button, 'exit')
     
     def check_conversion_ready(self):
         """Check if all requirements are met for conversion"""
@@ -295,9 +373,17 @@ class SetupPathsWindow:
                 self.table_name_set)
         
         if ready:
-            self.convert_button.config(state='normal', bg='lightgreen')
+            self.convert_button.config(
+                state='normal', 
+                bg=self.current_theme['convert_bg'],
+                fg=self.current_theme['convert_fg']
+            )
         else:
-            self.convert_button.config(state='disabled', bg='lightgray')
+            self.convert_button.config(
+                state='disabled', 
+                bg=self.current_theme['disabled_bg'],
+                fg=self.current_theme['disabled_fg']
+            )
         
         return ready
     
@@ -314,7 +400,12 @@ class SetupPathsWindow:
         
         try:
             # Disable button during conversion
-            self.convert_button.config(state='disabled', text='Converting...')
+            self.convert_button.config(
+                state='disabled', 
+                text='Converting...',
+                bg=self.current_theme['disabled_bg'],
+                fg=self.current_theme['disabled_fg']
+            )
             self.window.update()
             
             # Perform conversion
@@ -338,7 +429,12 @@ class SetupPathsWindow:
         
         finally:
             # Re-enable button
-            self.convert_button.config(state='normal', text='Convert CSV to SQLite')
+            self.convert_button.config(
+                state='normal', 
+                text='Convert CSV to SQLite',
+                bg=self.current_theme['convert_bg'],
+                fg=self.current_theme['convert_fg']
+            )
 
     def select_file(self):
         """Handle file selection with error handling"""
@@ -383,8 +479,9 @@ class SetupPathsWindow:
                 
                 self.file_status_label.config(
                     text=f"✓ Selected: {filename_display}", 
-                    fg='green'
+                    fg=self.current_theme['status_good']
                 )
+                self.register_special_widget(self.file_status_label, 'status_good')
                 
                 self.check_conversion_ready()
                 
@@ -422,8 +519,9 @@ class SetupPathsWindow:
                 
                 self.path_status_label.config(
                     text=f"✓ Save to: {path_display}", 
-                    fg='green'
+                    fg=self.current_theme['status_good']
                 )
+                self.register_special_widget(self.path_status_label, 'status_good')
                 
                 self.check_conversion_ready()
                 
@@ -433,14 +531,32 @@ class SetupPathsWindow:
     def cancel_operation(self):
         """Cancel the operation with confirmation"""
         response = messagebox.askyesno("Cancel Operation", 
-                                     "Are you sure you want to cancel?\n"
-                                     "All current settings will be lost.")
+                                    "Are you sure you want to cancel?\n"
+                                    "All current settings will be lost.")
         if response:
+            # Call the parent's cleanup if it exists
+            if hasattr(self.parent, 'conversion_window') and self.parent.conversion_window == self:
+                self.parent.conversion_window = None
+            
+            # Unregister from theme callbacks before destroying
+            try:
+                self.theme_manager.unregister_theme_callback(self.on_theme_changed)
+            except:
+                pass
             self.window.destroy()
 
     def close_setup(self):
         """Close the setup window"""
         try:
+            # Call the parent's cleanup if it exists
+            if hasattr(self.parent, 'conversion_window') and self.parent.conversion_window == self:
+                self.parent.conversion_window = None
+            
+            # Unregister from theme callbacks before destroying
+            try:
+                self.theme_manager.unregister_theme_callback(self.on_theme_changed)
+            except:
+                pass
             self.window.destroy()
         except Exception as e:
             print(f"Error closing window: {e}")
