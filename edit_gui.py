@@ -2,23 +2,26 @@ import tkinter as tk
 from tkinter import messagebox
 from GUI_tooltip import ToolTip
 from edit_sql import editsql
+from theme_manager import ThemableWindow, get_app_theme_manager
 
 
-class editgui:
+class editgui(ThemableWindow):
+    """Database editing GUI with theme support"""
+    
     def __init__(self, parent):
+        # Initialize theming first
+        ThemableWindow.__init__(self, get_app_theme_manager())
+        
         self.parent = parent
         
-        # Initialize theme
-        self.current_theme = {
-            'bg': 'white',
-            'text': 'black'
-        }
+        # Get current theme
+        self.current_theme = self.theme_manager.get_current_theme()
         
         # Create window
         self.window = tk.Toplevel(parent)
         self.window.title("Edit database")
-        self.window.geometry("1300x800")
-        self.window.configure(bg='white')
+        self.window.geometry("1300x850")
+        self.window.configure(bg=self.current_theme['bg'])
         self.window.resizable(width=False, height=False)
         
         self.window.transient(parent)
@@ -27,21 +30,33 @@ class editgui:
         
         try:
             self.setup_ui()
+            # Apply initial theme
+            self.apply_theme()
         except Exception as e:
             messagebox.showerror("UI Setup Error", f"Failed to create interface: {str(e)}")
             self.window.destroy()
+    
+    def on_theme_changed(self, new_theme):
+        """Called when theme changes"""
+        self.current_theme = new_theme
+        self.window.configure(bg=self.current_theme['bg'])
+        self.apply_theme()
         
     def setup_ui(self):
         """Setup the user interface"""
+        # Theme toggle at top
+        self.create_theme_toggle_section()
+        
         # Title
-        title_label = tk.Label(
+        self.title_label = tk.Label(
             self.window, 
-            text="Created database editing tools",
+            text="Database Editing Tools",
             font=("Arial", 16, "bold"), 
-            bg='white', 
-            fg='black'
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['title_color']
         )
-        title_label.pack(pady=20)
+        self.title_label.pack(pady=0)
+        self.register_special_widget(self.title_label, 'title')
         
         self.view_db_section()
         self.add_delete_table_section()
@@ -50,92 +65,251 @@ class editgui:
         self.add_delete_column_section()
         self.create_control_buttons()
 
+    def create_theme_toggle_section(self):
+        """Create theme toggle button"""
+        theme_frame = tk.Frame(self.window, bg=self.current_theme['bg'])
+        theme_frame.pack(anchor='ne', padx=10, pady=5)
+        
+        self.theme_button = self.create_theme_toggle(theme_frame)
+        self.theme_button.pack()
+        self.register_special_widget(self.theme_button, 'theme_toggle')
+
     def view_db_section(self):
         """Section to view the database"""
         view_frame = tk.Frame(self.window, bg=self.current_theme['bg'])
-        view_frame.pack(pady=10, padx=20, fill='x')
+        view_frame.pack(pady=(15,0), padx=20, fill='x')
         
-        view_label = tk.Label(view_frame, text="View Database", font=("Arial", 14), bg='white', fg='black')
-        view_label.pack(padx=10, pady=5)
+        # Create a bordered section
+        section_frame = tk.Frame(view_frame, bg=self.current_theme['bg'], relief='ridge', bd=2)
+        section_frame.pack(fill='x', padx=10, pady=5)
         
-        # Placeholder for database viewing functionality
-        view_button = tk.Button(view_frame, text="View Database", command=editsql.view_database)
-        view_button.pack(pady=5)
+        view_label = tk.Label(
+            section_frame, 
+            text="📋 View Database", 
+            font=("Arial", 14, "bold"), 
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['text']
+        )
+        view_label.pack(pady=10)
+        
+        view_button = tk.Button(
+            section_frame, 
+            text="View Database Contents",
+            command=editsql.view_database,
+            font=("Arial", 11),
+            width=25,
+            height=2,
+            bg=self.current_theme['button_bg'],
+            fg=self.current_theme['button_fg'],
+            cursor='hand2'
+        )
+        view_button.pack(pady=(0, 10))
         ToolTip(view_button, "Click to view the database contents in a new window")
 
     def add_delete_table_section(self):
         """Section to add or delete tables"""
         table_frame = tk.Frame(self.window, bg=self.current_theme['bg'])
-        table_frame.pack(pady=10, padx=20, fill='x')
+        table_frame.pack(pady=0, padx=20, fill='x')
         
-        table_label = tk.Label(table_frame, text="Add/Delete Table", font=("Arial", 14), bg='white', fg='black')
-        table_label.pack(anchor='center')
+        # Create a bordered section
+        section_frame = tk.Frame(table_frame, bg=self.current_theme['bg'], relief='ridge', bd=2)
+        section_frame.pack(fill='x', padx=10, pady=5)
+        
+        table_label = tk.Label(
+            section_frame, 
+            text="🗃️ Manage Tables", 
+            font=("Arial", 14, "bold"), 
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['text']
+        )
+        table_label.pack(pady=10)
 
-        table_entry = tk.Entry(table_frame, width=20)
-        table_entry.pack(padx=5, pady=5)
-        ToolTip(table_entry, "Enter the name of table you want to add or delete")
+        # Input section
+        input_frame = tk.Frame(section_frame, bg=self.current_theme['bg'])
+        input_frame.pack(pady=5)
         
-        add_table_button = tk.Button(table_frame, text="Add Table", command=editsql.add_table)
-        add_table_button.pack(padx=5, pady=5)
+        # Button section
+        button_frame = tk.Frame(section_frame, bg=self.current_theme['bg'])
+        button_frame.pack(pady=10)
         
-        delete_table_button = tk.Button(table_frame, text="Delete Table", command=editsql.delete_table)
-        delete_table_button.pack(padx=5, pady=5)
+        add_table_button = tk.Button(
+            button_frame, 
+            text="Add Table", 
+            command=editsql.add_table,
+            font=("Arial", 11),
+            width=15,
+            bg=self.current_theme['convert_bg'],
+            fg=self.current_theme['convert_fg'],
+            cursor='hand2'
+        )
+        add_table_button.pack(side='left', padx=5)
+        self.register_special_widget(add_table_button, 'convert')
+        
+        delete_table_button = tk.Button(
+            button_frame, 
+            text="Delete Table", 
+            command=editsql.delete_table,
+            font=("Arial", 11),
+            width=15,
+            bg=self.current_theme['exit_bg'],
+            fg=self.current_theme['exit_fg'],
+            cursor='hand2'
+        )
+        delete_table_button.pack(side='left', padx=5)
+        self.register_special_widget(delete_table_button, 'exit')
 
     def add_delete_record_section(self):
         """Section to add or delete records"""
         record_frame = tk.Frame(self.window, bg=self.current_theme['bg'])
-        record_frame.pack(pady=10, padx=20, fill='x')
+        record_frame.pack(pady=0, padx=20, fill='x')
         
-        record_label = tk.Label(record_frame, text="Add/Delete Record", font=("Arial", 14), bg='white', fg='black')
-        record_label.pack(padx=5, pady=5)
-
-        record_entry = tk.Entry(record_frame, width=20)
-        record_entry.pack(padx=5, pady=5)
-        ToolTip(record_entry, "Enter the record details you want to add or delete (table name and record data)")
+        # Create a bordered section
+        section_frame = tk.Frame(record_frame, bg=self.current_theme['bg'], relief='ridge', bd=2)
+        section_frame.pack(fill='x', padx=10, pady=5)
         
-        add_record_button = tk.Button(record_frame, text="Add Record", command=editsql.add_record)
-        add_record_button.pack(padx=5, pady=5)
+        record_label = tk.Label(
+            section_frame, 
+            text="📝 Manage Records", 
+            font=("Arial", 14, "bold"), 
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['text']
+        )
+        record_label.pack(pady=10)
         
-        delete_record_button = tk.Button(record_frame, text="Delete Record", command=editsql.delete_record)
-        delete_record_button.pack(padx=5, pady=5)
+        # Button section
+        button_frame = tk.Frame(section_frame, bg=self.current_theme['bg'])
+        button_frame.pack(pady=10)
+        
+        add_record_button = tk.Button(
+            button_frame, 
+            text="Add Record", 
+            command=editsql.add_record,
+            font=("Arial", 11),
+            width=15,
+            bg=self.current_theme['convert_bg'],
+            fg=self.current_theme['convert_fg'],
+            cursor='hand2'
+        )
+        add_record_button.pack(side='left', padx=5)
+        self.register_special_widget(add_record_button, 'convert')
+        
+        delete_record_button = tk.Button(
+            button_frame, 
+            text="Delete Record", 
+            command=editsql.delete_record,
+            font=("Arial", 11),
+            width=15,
+            bg=self.current_theme['exit_bg'],
+            fg=self.current_theme['exit_fg'],
+            cursor='hand2'
+        )
+        delete_record_button.pack(side='left', padx=5)
+        self.register_special_widget(delete_record_button, 'exit')
 
     def add_delete_column_section(self):
         """Section to add or delete columns"""
         column_frame = tk.Frame(self.window, bg=self.current_theme['bg'])
-        column_frame.pack(pady=10, padx=20, fill='x')
+        column_frame.pack(pady=0, padx=20, fill='x')
         
-        column_label = tk.Label(column_frame, text="Add/Delete Column", font=("Arial", 14), bg='white', fg='black')
-        column_label.pack(anchor='center')
-
-        column_entry = tk.Entry(column_frame, width=20)
-        column_entry.pack(padx=5, pady=5)
-        ToolTip(column_entry, "Enter the name of the column you want to add or delete")
+        # Create a bordered section
+        section_frame = tk.Frame(column_frame, bg=self.current_theme['bg'], relief='ridge', bd=2)
+        section_frame.pack(fill='x', padx=10, pady=5)
         
-        add_column_button = tk.Button(column_frame, text="Add Column", command=editsql.add_column)
-        add_column_button.pack(padx=5, pady=5)
+        column_label = tk.Label(
+            section_frame, 
+            text="🏛️ Manage Columns", 
+            font=("Arial", 14, "bold"), 
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['text']
+        )
+        column_label.pack(pady=10)
         
-        delete_column_button = tk.Button(column_frame, text="Delete Column", command=editsql.delete_column)
-        delete_column_button.pack(padx=5, pady=5)
+        # Button section
+        button_frame = tk.Frame(section_frame, bg=self.current_theme['bg'])
+        button_frame.pack(pady=10)
+        
+        add_column_button = tk.Button(
+            button_frame, 
+            text="Add Column", 
+            command=editsql.add_column,
+            font=("Arial", 11),
+            width=15,
+            bg=self.current_theme['convert_bg'],
+            fg=self.current_theme['convert_fg'],
+            cursor='hand2'
+        )
+        add_column_button.pack(side='left', padx=5)
+        self.register_special_widget(add_column_button, 'convert')
+        
+        delete_column_button = tk.Button(
+            button_frame, 
+            text="Delete Column", 
+            command=editsql.delete_column,
+            font=("Arial", 11),
+            width=15,
+            bg=self.current_theme['exit_bg'],
+            fg=self.current_theme['exit_fg'],
+            cursor='hand2'
+        )
+        delete_column_button.pack(side='left', padx=5)
+        self.register_special_widget(delete_column_button, 'exit')
 
     def edit_record_section(self):
         """Section to edit records"""
         edit_frame = tk.Frame(self.window, bg=self.current_theme['bg'])
-        edit_frame.pack(pady=10, padx=20, fill='x')
+        edit_frame.pack(pady=0, padx=20, fill='x')
         
-        edit_label = tk.Label(edit_frame, text="Edit Record", font=("Arial", 14), bg='white', fg='black')
-        edit_label.pack(anchor='center')
-
-        edit_entry = tk.Entry(edit_frame, width=20)
-        edit_entry.pack(padx=5, pady=5)
-        ToolTip(edit_entry, "Enter the record details you want to edit (table name, name of column and new data)")
+        # Create a bordered section
+        section_frame = tk.Frame(edit_frame, bg=self.current_theme['bg'], relief='ridge', bd=2)
+        section_frame.pack(fill='x', padx=10, pady=5)
         
-        edit_record_button = tk.Button(edit_frame, text="Edit Record", command=editsql.edit_record)
-        edit_record_button.pack(padx=5, pady=5)
+        edit_label = tk.Label(
+            section_frame, 
+            text="✏️ Edit Records", 
+            font=("Arial", 14, "bold"), 
+            bg=self.current_theme['bg'], 
+            fg=self.current_theme['text']
+        )
+        edit_label.pack(pady=10)
+        
+        # Button section
+        button_frame = tk.Frame(section_frame, bg=self.current_theme['bg'])
+        button_frame.pack(pady=10)
+        
+        edit_record_button = tk.Button(
+            button_frame, 
+            text="Edit Record", 
+            command=editsql.edit_record,
+            font=("Arial", 11),
+            width=15,
+            bg=self.current_theme['edit_bg'],
+            fg=self.current_theme['edit_fg'],
+            cursor='hand2'
+        )
+        edit_record_button.pack(pady=5)
+        self.register_special_widget(edit_record_button, 'edit')
 
     def create_control_buttons(self):
+        """Create control buttons"""
         button_frame = tk.Frame(self.window, bg=self.current_theme['bg'])
         button_frame.pack(pady=30)
         
+        # Info/Help button
+        help_button = tk.Button(
+            button_frame, 
+            text="Help & Info",
+            command=self.show_help,
+            font=("Arial", 12), 
+            width=15, 
+            height=2, 
+            bg=self.current_theme['button_bg'],
+            fg=self.current_theme['button_fg'],
+            cursor='hand2'
+        )
+        help_button.pack(side='left', padx=10)
+        ToolTip(help_button, "Show help information about database editing")
+        
+        # Close button
         done_button = tk.Button(
             button_frame, 
             text="Close",
@@ -143,7 +317,8 @@ class editgui:
             font=("Arial", 12), 
             width=15, 
             height=2, 
-            bg='lightgray',
+            bg=self.current_theme['button_bg'],
+            fg=self.current_theme['button_fg'],
             cursor='hand2'
         )
         done_button.pack(side='left', padx=10)
@@ -156,23 +331,71 @@ class editgui:
             font=("Arial", 12), 
             width=15, 
             height=2, 
-            bg='lightcoral',
+            bg=self.current_theme['exit_bg'],
+            fg=self.current_theme['exit_fg'],
             cursor='hand2'
         )
         cancel_button.pack(side='left', padx=10)
+        self.register_special_widget(cancel_button, 'exit')
+
+    def show_help(self):
+        """Show help information"""
+        help_text = """Database Editing Tools Help:
+
+🔍 View Database: Display all tables and their contents
+📊 Add Table: Create a new table in the database
+🗑️ Delete Table: Remove an existing table
+➕ Add Record: Insert new data into a table
+❌ Delete Record: Remove specific records
+📝 Edit Record: Modify existing record data
+🏛️ Add Column: Add new columns to tables
+🗂️ Delete Column: Remove columns from tables
+
+Note: Always backup your database before making changes!"""
+        
+        messagebox.showinfo("Database Tools Help", help_text)
 
     def cancel_operation(self):
         """Cancel the operation with confirmation"""
         response = messagebox.askyesno("Cancel Operation", 
-                                     "Are you sure you want to cancel?\n"
-                                     "All current settings will be lost.")
+                                    "Are you sure you want to cancel?\n"
+                                    "Any unsaved changes will be lost.")
         if response:
+            # Call the parent's cleanup if it exists
+            if hasattr(self.parent, 'edit_window') and self.parent.edit_window == self:
+                self.parent.edit_window = None
+            
+            # Unregister from theme callbacks before destroying
+            try:
+                self.theme_manager.unregister_theme_callback(self.on_theme_changed)
+            except:
+                pass
             self.window.destroy()
 
     def close_setup(self):
         """Close the setup window"""
         try:
+            # Call the parent's cleanup if it exists
+            if hasattr(self.parent, 'edit_window') and self.parent.edit_window == self:
+                self.parent.edit_window = None
+            
+            # Unregister from theme callbacks before destroying
+            try:
+                self.theme_manager.unregister_theme_callback(self.on_theme_changed)
+            except:
+                pass
             self.window.destroy()
         except Exception as e:
             print(f"Error closing window: {e}")
 
+# Example usage for testing
+if __name__ == "__main__":
+    # Create main window for testing
+    root = tk.Tk()
+    root.withdraw()  # Hide main window
+    
+    # Create edit window
+    edit_window = editgui(root)
+    
+    # Start GUI loop
+    root.mainloop()
